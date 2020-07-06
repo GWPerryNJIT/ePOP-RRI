@@ -11,16 +11,16 @@ import datetime, time
 fs=62500.33933 #RRI's sampling frequency
 
 
-def Rotx(angle_): #funciton returning X-rotation matrix for a given angle
-	Rx_=[[1,0,0],[0,np.cos(np.deg2rad(angle_)),-np.sin(np.deg2rad(angle_))],[0,np.sin(np.deg2rad(angle_)), np.cos(np.deg2rad(angle_))]]#	
+def Rotx(angle_): #function returning X-rotation matrix for a given angle
+	Rx_=np.array([[1,0,0],[0,np.cos(np.deg2rad(angle_)),-np.sin(np.deg2rad(angle_))],[0,np.sin(np.deg2rad(angle_)), np.cos(np.deg2rad(angle_))]])#	
 	return Rx_
 
-def Roty(angle_): #funciton returning Y-rotation matrix for a given angle
-	Ry_=[[np.cos(np.deg2rad(angle_)),0,np.sin(np.deg2rad(angle_))],[0,1,0],[-np.sin(np.deg2rad(angle_)),0,np.cos(np.deg2rad(angle_))]]#	
+def Roty(angle_): #function returning Y-rotation matrix for a given angle
+	Ry_=np.array([[np.cos(np.deg2rad(angle_)),0,np.sin(np.deg2rad(angle_))],[0,1,0],[-np.sin(np.deg2rad(angle_)),0,np.cos(np.deg2rad(angle_))]])#	
 	return Ry_
 
-def Rotz(angle_): #funciton returning Z-rotation matrix for a given angle
-	Rz_=[[np.cos(np.deg2rad(angle_)),-np.sin(np.deg2rad(angle_)),0],[np.sin(np.deg2rad(angle_)),np.cos(np.deg2rad(angle_)),0],[0,0,1]]#	
+def Rotz(angle_): #function returning Z-rotation matrix for a given angle
+	Rz_=np.array([[np.cos(np.deg2rad(angle_)),-np.sin(np.deg2rad(angle_)),0],[np.sin(np.deg2rad(angle_)),np.cos(np.deg2rad(angle_)),0],[0,0,1]])#	
 	return Rz_
 
 
@@ -29,7 +29,6 @@ class RRI:
 	def __init__(self,filename):
 		
 		#This first bunch of code reads in the RRI data from the .h5 files and create several useful instances with that data.
-
 		self.filename=filename
 
 		self.fs_=fs #RRI sampling frequency
@@ -87,6 +86,17 @@ class RRI:
 		roll_=self.data.get("CASSIOPE Ephemeris/Roll (deg)")
 		self.roll_=np.array(roll_).flatten()
 
+		#calculate a unit vector (in GEI coordinates) for the spacecraft velocity
+		self.epop_v=self.gei_v/np.sqrt(np.sum(np.square(self.gei_v),axis=0)) #e-POP X-vector, and also S/C velocity unit vector (in GEI)
+
+		#calculate S/C unit z-vector is the negative of the displacement between the center of the GEI system and the S/C position
+		#these are spacecraft centric unit vectors
+		self.epop_z=-self.gei_/np.sqrt(np.sum(np.square(self.gei_),axis=0)) # e-POP Z-vector (in GEI)
+
+		self.epop_y=np.cross(self.epop_z,self.epop_v,axisa=0,axisb=0,axisc=0) 	#the S/C unit y-vector is the Z cross S/C velocity
+
+		self.epop_x=np.cross(self.epop_y,self.epop_z,axisa=0,axisb=0,axisc=0) #the S/C unit y-vector is the Z cross S/C velocity
+
 		#RADIO DATA READ IN
 
 		#Read in the monopole data, assign to numpy arrays
@@ -113,17 +123,11 @@ class RRI:
 		self.data.close() #close up the file since it's no longer in use
 
 
+
+		#when doing the rotations, you need to make sure you're coordinate system is centered on the spacecraft, not the Earth.
+
 	# *** THE FOLLOWING METHOD HAS NOT BEEN VALIDATED YET **
 	def RRI_point(self): #class method here to return the unit pointing vectors of each of RRI's boresight, for now, in GEI only
-
-		#calculate a unit vector (in GEI coordinates) for the spacecraft velocity
-		epop_x=self.gei_v/np.sqrt(np.sum(np.square(self.gei_v),axis=0)) #e-POP X-vector, and also S/C velocity unit vector (in GEI)
-		
-		#calculate S/C unit z-vector is the negative of the displacement between the center of the GEI system and the S/C position
-		epop_z=-self.gei_/np.sqrt(np.sum(np.square(self.gei_),axis=0)) # e-POP Z-vector (in GEI)
-		
-		epop_y=np.cross(epop_z,epop_x,axisa=0,axisb=0,axisc=0) 	#the S/C unit y-vector is the Z cross S/C velocity
-
 
 		#now do the rotations to account for the yaw pitch and roll of the spacecraft.
 		Rx_=np.empty(shape=(3,3,len(self.roll_))) #empty roll matrix
@@ -132,60 +136,40 @@ class RRI:
 		
 		R_=np.empty(shape=(3,3,len(self.yaw_))) #empty rotation matrix
 		
-		RRI_point=np.empty(shape=(3,len(self.yaw_))) #empty RRI pointing matrix
+		RRI_point=np.empty(shape=(3,3,len(self.yaw_))) #empty RRI pointing matrix
 
 		#build the roation matrices and RRI point
 		for z in range(len(self.roll_)):
 			
 			Rx_[:,:,z]=Rotx(self.roll_[z])
 			Ry_[:,:,z]=Roty(self.pitch_[z])
-			Rz_[:,:,z]=Rotz(self.yaw_[z])
+			Rz_[:,:,z]=Rotz(self.yaw_[z])	
 
-			RxRy=np.matmul(Rx_[:,:,z],Ry_[:,:,z]) #doing this in two steps because I'm unnsure about the order of operations in matmul
-			R_[:,:,z]=np.matmul(RxRy,Rz_[:,:,z]) #applying the rotations to form R_, the rotation matrix for all times
-
-			RRI_point[:,z]=np.matmul(R_[:,:,z],epop_x[:,z]) #RRI's pointing direction, accounting for the yaw, pitch, and roll
-
+			#RRI's pointing direction, accounting for the yaw, pitch, and roll
+			#in RRI point, columnn 1 is the unit vector of the s/c x-vector, column 2 is the "" y-vector, column 3 "" z-vector
+			#RRI point 3x3xtime
+			RRI_point[:,:,z]=Rz_[:,:,z]@Ry_[:,:,z]@Rx_[:,:,z]@np.concatenate(([self.epop_x[:,z]],[self.epop_y[:,z]],[self.epop_z[:,z]]),axis=0).T 
+			
 		return RRI_point
 
 		
-
-	#this hasn't been scrutinized yet
-	#*** WORKING ON THIS ***
+	#this hasn't been validated yet
 
 	def RRI_mono_point(self): #class method here to return the unit pointing vectors of each of RRI's monopoles, for now, in GEI only
-
-		RRI_point=self.RRI_point() #call the RRI_point method
-
-		#determine which way the input rotation matrix is oriented
-		mn_=RRI_point.shape
-
-		if mn_[1]==3: #if the coorindate axis is axis=1 tranpose the matrix
-			RRI_point=np.transpose(RRI_point)
-
-		ll_=mn_[0]*mn_[1] #RRI pointing matrix
-		
-		RRI_mono_point=np.empty(shape=(4,3,ll_)) #empty RRI monopole pointing matrix
-
-		#build the roation matrices for each monopole
-		for z in range(ll_):
-			R_1=np.matmul(Rotz(90),Rotx(-135)) #rotation matrix for RRI boresight to monopole 1
-			R_2=np.matmul(Rotz(90),Rotx(45)) #rotation matrix for RRI boresight to monopole 2
-			R_3=np.matmul(Rotz(90),Rotx(-45)) #rotation matrix for RRI boresight to monopole 3
-			R_4=np.matmul(Rotz(90),Rotx(135)) #rotation matrix for RRI boresight to monopole 4
-
-
-			#perform the rotations for each monopole
-			RRI_mono_point[0,:,z]=np.matmul(RRI_point[:,z],R_1)
-			RRI_mono_point[1,:,z]=np.matmul(RRI_point[:,z],R_2)
-			RRI_mono_point[2,:,z]=np.matmul(RRI_point[:,z],R_3)
-			RRI_mono_point[3,:,z]=np.matmul(RRI_point[:,z],R_4)		
-
-		
-
-		return RRI_monople_point
-
 	
+		RRI_mono_point=np.empty(shape=(4,3,self.epop_x.shape[1])) #empty RRI monopole pointing matrix
+
+		RRI_point_temp=self.RRI_point() #call RRI point, which gives you the pointing directions of all of e-POP's axes
+
+		for z in range(self.epop_x.shape[1]):
+			#since we know the x,y,z spacecraft vectors, the monopoles are simply vector additions of the spacecraft axis vectors
+			RRI_mono_point[0,:,z]=(-RRI_point_temp[:,1,z]-RRI_point_temp[:,2,z])/np.sqrt(np.sum(np.square(-RRI_point_temp[:,1,z]-RRI_point_temp[:,2,z]))) # - y-z
+			RRI_mono_point[1,:,z]=(RRI_point_temp[:,1,z]+RRI_point_temp[:,2,z])/np.sqrt(np.sum(np.square(RRI_point_temp[:,1,z]+RRI_point_temp[:,2,z]))) # y+z
+			RRI_mono_point[2,:,z]=(RRI_point_temp[:,1,z]-RRI_point_temp[:,2,z])/np.sqrt(np.sum(np.square(RRI_point_temp[:,1,z]-RRI_point_temp[:,2,z]))) # y-z
+			RRI_mono_point[3,:,z]=(-RRI_point_temp[:,1,z]+RRI_point_temp[:,2,z])/np.sqrt(np.sum(np.square(-RRI_point_temp[:,1,z]+RRI_point_temp[:,2,z]))) #-y+z
+
+		return RRI_mono_point
+
 
 #other class methods that are needed
 #calculate Stokes

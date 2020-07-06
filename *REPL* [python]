@@ -1,0 +1,33 @@
+Python 3.7.4 (default, Aug 13 2019, 15:17:50) 
+[Clang 4.0.1 (tags/RELEASE_401/final)] :: Anaconda, Inc. on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import os
+>>> os.chdir('/Users/perry/GitHub/ePOP-RRI/')
+>>> from RRI import *
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/Users/perry/GitHub/ePOP-RRI/RRI.py", line 172
+    return RRI_mono_point
+         ^
+IndentationError: expected an indented block
+>>> from RRI import *
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/Users/perry/GitHub/ePOP-RRI/RRI.py", line 172
+    return RRI_mono_point
+         ^
+IndentationError: expected an indented block
+>>> from RRI import *
+>>> fn1_=RRI('/Users/perry/Documents/Proposals/NASA/B13_US-Participating-Investigator_2020/RRI_20190601_004358_005056_lv1_v5.h5')
+>>> hh=fn1_.RRI_point()
+>>> hh[:,:,0]
+array([[-0.55597024, -0.67964853,  0.4771011 ],
+       [ 0.14159907,  0.48766528,  0.861209  ],
+       [-0.81798507,  0.54636365, -0.17519589]])
+>>> hh[:,0,0]
+array([-0.55597024,  0.14159907, -0.81798507])
+>>> hh[:,0,0]@hh[:,1,0]
+-9.71445146547012e-17
+>>> hh[:,0,0]@hh[:,2,0]
+0.0
+>>> 
