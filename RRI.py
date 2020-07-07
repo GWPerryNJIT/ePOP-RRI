@@ -124,8 +124,6 @@ class RRI:
 
 
 
-		#when doing the rotations, you need to make sure you're coordinate system is centered on the spacecraft, not the Earth.
-
 	# *** THE FOLLOWING METHOD HAS NOT BEEN VALIDATED YET **
 	def RRI_point(self): #class method here to return the unit pointing vectors of each of RRI's boresight, for now, in GEI only
 
@@ -169,6 +167,42 @@ class RRI:
 			RRI_mono_point[3,:,z]=(-RRI_point_temp[:,1,z]+RRI_point_temp[:,2,z])/np.sqrt(np.sum(np.square(-RRI_point_temp[:,1,z]+RRI_point_temp[:,2,z]))) #-y+z
 
 		return RRI_mono_point
+
+		#'/Users/perry/Downloads/MGF_20190601_003521_010220_V_01_00_03.1sps.GEI.lv3'
+
+	def MGF_data(self,fname_,start_dt,end_dt): #only for GEI.lv3 at this point in time, arguments are start and end datettime
+
+		#class method here to read in and return e-POP MGF measurements
+		#pass along time segement of interest in call
+		#TO DO: include a time resolution request, should default to 1 sec
+
+		#read in MGF level-3 ASCII file 
+		f_=open(fname_,'r')
+		mgf_dat=np.genfromtxt(f_,skip_header=1,usecols=(1,2,3,4)) #column 1 is e-POP MET, #2 is B_GEIX (nT), #3 B_GEIY (nT), #4 B_GEIZ (nT)
+		f_.close()
+
+		#MET epoch
+		epop_epoch=datetime.datetime(1968,5,24,0,0,0)
+		epop_epoch_s=time.mktime(epop_epoch.timetuple())#seconds since January 1, 1970 (Unix Epoch)
+
+		#dealing with the time information
+		mgf_s=np.array(mgf_dat[:,0])+epop_epoch_s-1 #MGF seconds in Unix epoch
+		#MGF datettime object for this file in seconds resolution
+		mgf_dt=datetime.datetime.fromtimestamp(mgf_s[0])+np.arange(len(mgf_s))*datetime.timedelta(seconds=1) 
+
+		dt_id=np.where((mgf_dt<=end_dt)&(mgf_dt>=start_dt)) #narrowing down to the date of interest
+		dt_id=dt_id[0] #dealing with the tuple
+
+		#return MGF array with unit vector magnetic field (because I can only see those values mattering at this point)
+		mgf_out=np.empty(shape=(3,len(dt_id)))
+		mgf_out[0,:]=mgf_dat[dt_id,1]/np.sqrt(np.sum(np.square(mgf_dat[dt_id,1:4]),axis=1))
+		mgf_out[1,:]=mgf_dat[dt_id,2]/np.sqrt(np.sum(np.square(mgf_dat[dt_id,1:4]),axis=1))
+		mgf_out[2,:]=mgf_dat[dt_id,3]/np.sqrt(np.sum(np.square(mgf_dat[dt_id,1:4]),axis=1))
+
+		return mgf_dt[dt_id],mgf_out #return the datetime and the MGF data in two separate arrays
+
+
+
 
 
 #other class methods that are needed
