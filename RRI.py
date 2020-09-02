@@ -3,6 +3,15 @@
 
 #import pdb; pdb.set_trace()
 
+#===Example Invocation===
+
+#from RRI import *
+#fn1_=RRI('/path/to/data/RRI_20200526_000904_001902_lv1_v5.h5') #load up the RRI data
+#glat_=fn1_.glat_ for the spacecraft geographic latitude information, or
+#m1_=fn1_.m1_mV for the monopole 1 measurements (in mV)
+
+
+
 
 import numpy as np 
 import h5py
