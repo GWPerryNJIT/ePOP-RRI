@@ -11,11 +11,14 @@
 #m1_=fn1_.m1_mV for the monopole 1 measurements (in mV)
 
 
+#import pdb; pdb.set_trace()
 
 
 import numpy as np 
 import h5py
 import datetime, time 
+
+from scipy import signal
 
 fs=62500.33933 #RRI's sampling frequency
 
@@ -31,6 +34,46 @@ def Roty(angle_): #function returning Y-rotation matrix for a given angle
 def Rotz(angle_): #function returning Z-rotation matrix for a given angle
 	Rz_=np.array([[np.cos(np.deg2rad(angle_)),-np.sin(np.deg2rad(angle_)),0],[np.sin(np.deg2rad(angle_)),np.cos(np.deg2rad(angle_)),0],[0,0,1]])#	
 	return Rz_
+
+
+def DARN_pulse_seeker(rri_dat):
+
+	#rri_dat is assumed to be complex
+	#switch NaNs to 0
+	loc_nan=np.isnan(rri_dat)
+	rri_dat[loc_nan]=0
+
+
+	#use the find peaks functionality whose indices correspond to the maximum.
+
+	#distance == 1500 us lag assumption, equivalent to 94 samples at 62500.33933 Hz sampling
+	#width == 300 us, a mimimum pulse length, equivalent to 18.75 samples at 62500.33933 Hz sampling
+	#height == "Required height of peaks." is calculated by considering the height of the peak above the background noise, takeng o
+	
+	#find_peaks returns a dictionary with the following properties
+	"""
+	‘peak_heights’
+	If height is given, the height of each peak in x.
+	
+	‘left_thresholds’, ‘right_thresholds’
+	If threshold is given, these keys contain a peaks vertical distance to its neighbouring samples.
+	
+	‘prominences’, ‘right_bases’, ‘left_bases’
+	If prominence is given, these keys are accessible. See peak_prominences for a description of their content.
+	
+	‘width_heights’, ‘left_ips’, ‘right_ips’
+	If width is given, these keys are accessible. See peak_widths for a description of their content.
+	
+	‘plateau_sizes’, left_edges’, ‘right_edges’
+	If plateau_size is given, these keys are accessible and contain the indices of a peak’s edges (edges are still part of the plateau) and the calculated plateau sizes.
+	
+	New in version 1.2.0.
+	To calculate and return properties without excluding peaks, provide the open interval (None, None) as a value to the appropriate argument (excluding distance).
+	"""
+
+	pks_=signal.find_peaks(np.abs(rri_dat),height=np.nanquantile(np.abs(rri_dat),0.5),width=15,distance=94)
+
+	return pks_ #return the indices of peak  associated with the pulses
 
 
 class RRI:
@@ -51,11 +94,14 @@ class RRI:
 		epop_epoch=datetime.datetime(1968,5,24,0,0,0)
 		epop_epoch_s=time.mktime(epop_epoch.timetuple())#seconds since January 1, 1970 (Unix Epoch)
 
-		epop_s=self.data.get("CASSIOPE Ephemeris/Ephemeris MET (seconds since May 24, 1968)")
-		epop_s=np.array(epop_s)+epop_epoch_s-1 #epop seconds in Unix epoch
+		
+		epop_met=self.data.get("CASSIOPE Ephemeris/Ephemeris MET (seconds since May 24, 1968)")
+		self.epop_met=np.array(epop_met).flatten()
+		
+		epop_s=np.array(self.epop_met)+epop_epoch_s-1 #epop seconds in Unix epoch
 
 		#ePOP datettime object for this file in seconds resolution
-		self.epop_dt=datetime.datetime.fromtimestamp(epop_s[0])+np.arange(len(epop_s))*datetime.timedelta(seconds=1) 
+		self.epop_dt=datetime.datetime.fromtimestamp(self.epop_met[0])+np.arange(len(self.epop_met))*datetime.timedelta(seconds=1) 
 		
 		
 		#EPHEMERIS INFORMATION
