@@ -15,6 +15,7 @@ import datetime, time
 
 from scipy import signal,interpolate
 
+
 import matplotlib.pyplot as plt
 
 from RRI import *
@@ -25,7 +26,13 @@ from RRI import *
 #fn1_=RRI('/Users/perry/Downloads/RRI_20150618_032244_032641_lv1_v5.h5')
 
 #fn1_=RRI('/Users/perry/Downloads/RRI_20150507_084944_085541_lv1_v5.h5')
-fn1_=RRI('/Users/perry/Downloads/RRI_20150723_121414_121821_lv1_v5.h5')
+fn1_=RRI('/Users/perry/Downloads/RRI_20170805_183314_183711_lv1_v5.h5')
+
+
+#import pdb; pdb.set_trace()
+
+#fn_out="/Users/perry/Google Drive File Stream/My Drive/RayTraceModel/Ruzic_rays/dat/DARN_pulses_out_14042017.h5"
+fn_out="/Users/perry/Downloads/DARN_pulses_out_05082017.h5"
 
 
 pls_=DARN_pulse_seeker(fn1_.m1_mV+1j*fn1_.m2_mV) #use the pulse seeker to extract the indices of the pulses along with other useful information
@@ -56,6 +63,10 @@ met_out=np.zeros((90,len(pls_[0])))
 d1_out=np.zeros((90,len(pls_[0]))) #dipole 1 voltage (mV)
 d2_out=np.zeros((90,len(pls_[0]))) #dipole 2 voltage (mV)
 
+m1_out=np.zeros((90,len(pls_[0]))) #monopole 1 voltage (mV)
+m2_out=np.zeros((90,len(pls_[0]))) #monopole 2 voltage (mV)
+m3_out=np.zeros((90,len(pls_[0]))) #monopole 3 voltage (mV)
+m4_out=np.zeros((90,len(pls_[0]))) #monopole 4 voltage (mV)
 
 #loop through all of the detected pulses and select the 90 surrounding samples
 for i in range(len(pls_[0])):
@@ -75,9 +86,15 @@ for i in range(len(pls_[0])):
 	d1_out[:,i]=np.abs(fn1_.m1_mV[smps_]+1j*fn1_.m2_mV[smps_])
 	d2_out[:,i]=np.abs(fn1_.m3_mV[smps_]+1j*fn1_.m4_mV[smps_])
 
+	m1_out[:,i]=fn1_.m1_mV[smps_]
+	m2_out[:,i]=fn1_.m2_mV[smps_]
+	m3_out[:,i]=fn1_.m3_mV[smps_]
+	m4_out[:,i]=fn1_.m4_mV[smps_]
+
+#import pdb; pdb.set_trace()
 
 #export the information in an h5 file
-hf=h5py.File('test_out_07232015.h5','w')
+hf=h5py.File(fn_out,'w')
 
 hf.create_dataset('pulse_ids',data=pls_[0])
 
@@ -94,9 +111,14 @@ hf.create_dataset('pulse_met',data=met_out)
 hf.create_dataset('pulse_d1_mvolts',data=d1_out)
 hf.create_dataset('pulse_d2_mvolts',data=d2_out)
 
+hf.create_dataset('pulse_m1_mvolts',data=m1_out)
+hf.create_dataset('pulse_m2_mvolts',data=m2_out)
+hf.create_dataset('pulse_m3_mvolts',data=m3_out)
+hf.create_dataset('pulse_m4_mvolts',data=m4_out)
+
 hf.close()
 
-import pdb; pdb.set_trace()
+
 
 
 

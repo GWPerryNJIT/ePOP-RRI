@@ -11,9 +11,6 @@
 #m1_=fn1_.m1_mV for the monopole 1 measurements (in mV)
 
 
-#import pdb; pdb.set_trace()
-
-
 import numpy as np 
 import h5py
 import datetime, time 
@@ -223,7 +220,7 @@ class RRI:
 
 		return RRI_mono_point
 
-		#'/Users/perry/Downloads/MGF_20190601_003521_010220_V_01_00_03.1sps.GEI.lv3'
+
 
 	def MGF_data(self,fname_,start_dt,end_dt): #only for GEI.lv3 at this point in time, arguments are start and end datettime
 
@@ -263,9 +260,5 @@ class RRI:
 #other class methods that are needed
 #calculate Stokes
 #calculate magnetic field vector (and unit vector) from MGF data file
-	#when doing this one, make sure everything is on the RRI 1-second time resolution
 
-#fn1_=RRI('/Users/perry/Documents/Proposals/NASA/B13_US-Participating-Investigator_2020/RRI_20190601_004358_005056_lv1_v5.h5')
-
-#print(fn1_.epop_dt)
 
